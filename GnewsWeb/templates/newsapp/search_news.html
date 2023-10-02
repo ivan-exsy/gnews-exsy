@@ -1,0 +1,86 @@
+{% extends 'base.html' %}
+{% load custom_filters %}
+{% load humanize %}
+
+{% block content %}
+    <div class="container">
+        <div class="row">
+            <div class="col">
+                <h2 class="mb-3">Google News App</h2>
+                <div class="input-group mb-3">
+                    <input type="text" class="form-control" id="searchInput" placeholder="Search for news...">
+                    <div class="input-group-append">
+                        <button class="btn btn-primary" id="searchButton" type="button">Search</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-md-4 mb-3">
+                <div class="input-group">
+                    <select class="form-control" id="country" placeholder="Select Country...">
+                        <option value="">Select Country...</option>
+                    </select>
+                </div>
+            </div>
+            <div class="col-md-4 mb-3">
+                <div class="input-group">
+                    <select class="form-control" id="language" placeholder="Select Language...">
+                        <option value="">Select Language...</option>
+                    </select>
+                </div>
+            </div>
+            <div class="col-md-4 mb-3">
+                <div class="input-group">
+                    <input type="text" class="form-control" id="period" placeholder="Period (e.g., 7d, 1m, 1y)...">
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col">
+                <ul class="news-list" id="newsList">
+                    <!-- Loading spinner -->
+
+
+                    <!-- News items will be displayed here dynamically -->
+
+                </ul>
+            </div>
+        </div>
+
+        <div class="text-center mt-3">
+            <button class="btn btn-primary" id="processButton">Process Selected</button>
+        </div>
+
+    </div>
+
+    <div class="loading" id="loader">
+        <div class="ui-loader loader-blk">
+            <svg viewBox="22 22 44 44" class="multiColor-loader">
+                <circle cx="44" cy="44" r="20.2" fill="none" stroke-width="3.6"
+                        class="loader-circle loader-circle-animation"></circle>
+            </svg>
+        </div>
+    </div>
+
+    <div class="container" id="summaryContainer" style="display: none;">
+        <h3 id="scriptLen"></h3>
+        <label for="processedDataTextarea"></label><textarea id="processedDataTextarea" style="display: none"
+                                                             class="form-control" rows="10"></textarea>
+
+        <div id="videoScript"></div>
+
+        <div class="row">
+            <div class="text-center mt-3">
+                <button class="btn btn-primary" id="generateVideo">Generate Video</button>
+            </div>
+        </div>
+
+        <div id="videoContainer">
+            <!-- The video URL will be displayed here -->
+        </div>  
+    </div>
+
+
+{% endblock %}
