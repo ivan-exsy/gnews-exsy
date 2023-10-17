@@ -1,6 +1,7 @@
 # gnews-exsy
 
 Running Demo - http://35.209.85.185:8000/
+Video Code walkthrough - https://youtu.be/MGT6RmIxlcY
 
 Details at google doc - https://docs.google.com/document/d/1oBi_7jqnfmV7eYb0MxDNL0mzy9lIwfLG1bYO4JKrZwg/edit
 
