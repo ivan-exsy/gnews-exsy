@@ -1,12 +1,10 @@
-# newsapp/urls.py
-
 from django.urls import path
-from . import views
+from .views import SearchNewsView, FetchNewsView, GenerateVideoView, ViewVideoView, ProcessSelectedNewsView
 
 urlpatterns = [
-    path('', views.search_news, name='search_news'),
-    path('process_selected_news/', views.process_selected_news, name='process_selected_news'),
-
-    path('fetch_news/', views.fetch_news, name='fetch_news'),
-    path('generate_video/', views.generate_video, name='generate_video'),
+    path('', SearchNewsView.as_view(), name='search_news'),
+    path('fetch_news/', FetchNewsView.as_view(), name='fetch_news'),
+    path('generate_video/', GenerateVideoView.as_view(), name='generate_video'),
+    path('view_video/<str:video_id>/', ViewVideoView.as_view(), name='view_video'),
+    path('process_selected_news/', ProcessSelectedNewsView.as_view(), name='process_selected_news'),
 ]

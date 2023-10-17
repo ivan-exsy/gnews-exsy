@@ -1,113 +1,133 @@
+import os
+from datetime import date
+
+from django.http import JsonResponse
+from django.shortcuts import render
+from django.views import View
+from django.views.decorators.csrf import csrf_exempt, csrf_protect
+from gnews import GNews
+from newspaper import Article
+import requests
 import json
 
-import openai
-import requests
-from django.shortcuts import render
-
-# Create your views here.
-# newsapp/views.py
-
-from django.shortcuts import render
-from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-from gnews import GNews
-from gnews.utils.constants import AVAILABLE_LANGUAGES, AVAILABLE_COUNTRIES
+from GnewsWeb.settings import D_ID_API_KEY, AVATAR_URL, VOICE_ID, MAX_RESULT
+from newsapp.helpers import generate_summary
 
 google_news = GNews()
 
 
-def search_news(request):
-    return render(request, 'newsapp/search_news.html')
+class SearchNewsView(View):
+    def get(self, request):
+        return render(request, 'newsapp/search_news.html')
 
 
-def fetch_news(request):
-    keyword = request.GET.get('keyword', 'US immigration')
+class FetchNewsView(View):
+    def get(self, request):
+        keyword = request.GET.get('keyword', 'US immigration')
+        start_date_str = request.GET.get('start_date', '2020-01-01')
+        end_date_str = request.GET.get('end_date', '2020-03-01')
 
-    google_news.max_results = 5
-    news = google_news.get_news(keyword)
-    return JsonResponse(news, safe=False)
+        try:
+            # Parse start_date and end_date as date objects
+            start_date = date.fromisoformat(start_date_str)
+            end_date = date.fromisoformat(end_date_str)
 
-
-def generate_summary(article_text):
-    desired_script_length = 20
-    api_key = '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'
-    # Specify the model to use (GPT-3.5-turbo is recommended for most use cases)
-    model = "text-davinci-003"
-
-    # Set the parameters for the API call
-    response = openai.Completion.create(
-        engine=model,
-        prompt=f"Summarize the following article:\n{article_text}\n\n summary, which will a video script that's around {desired_script_length} seconds long. :",
-        max_tokens=150,  # Adjust max_tokens based on your desired summary length
-        api_key=api_key,
-    )
-
-    # Extract and return the generated summary
-    summary = response.choices[0].text.strip()
-    return summary
+            # Set the start_date and end_date for google_news
+            google_news.start_date = (start_date.year, start_date.month, start_date.day)
+            google_news.end_date = (end_date.year, end_date.month, end_date.day)
+        except ValueError:
+            # Handle invalid date formats here if needed
+            pass
+        google_news.max_results = int(MAX_RESULT)
+        news = google_news.get_news(keyword)
+        return JsonResponse(news, safe=False)
 
 
-@csrf_exempt
-def generate_video(request):
-    import requests
-    token = "Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6Ik53ek53TmV1R3ptcFZTQjNVZ0J4ZyJ9.eyJodHRwczovL2QtaWQuY29tL2ZlYXR1cmVzIjoiIiwiaHR0cHM6Ly9kLWlkLmNvbS9jeF9sb2dpY19pZCI6IiIsImh0dHBzOi8vZC1pZC5jb20vY2hhdF9zdHJpcGVfc3Vic2NyaXB0aW9uX2lkIjoiIiwiaHR0cHM6Ly9kLWlkLmNvbS9zdHJpcGVfY3VzdG9tZXJfaWQiOiIiLCJpc3MiOiJodHRwczovL2F1dGguZC1pZC5jb20vIiwic3ViIjoiZ29vZ2xlLW9hdXRoMnwxMTQ4NDQ3MzgxMzA0ODk3ODM2MTUiLCJhdWQiOlsiaHR0cHM6Ly9kLWlkLnVzLmF1dGgwLmNvbS9hcGkvdjIvIiwiaHR0cHM6Ly9kLWlkLnVzLmF1dGgwLmNvbS91c2VyaW5mbyJdLCJpYXQiOjE2OTU2NTAzMzMsImV4cCI6MTY5NTczNjczMywiYXpwIjoiR3pyTkkxT3JlOUZNM0VlRFJmM20zejNUU3cwSmxSWXEiLCJzY29wZSI6Im9wZW5pZCBwcm9maWxlIGVtYWlsIHJlYWQ6Y3VycmVudF91c2VyIHVwZGF0ZTpjdXJyZW50X3VzZXJfbWV0YWRhdGEgb2ZmbGluZV9hY2Nlc3MifQ.EJA0yWfSbdPHYmSNtw2B1fPotY6AGRUtHMA2nhjax4D0vLfjvrsdunDm4rhESalteNkUgEj64OU_mo20MzHB78kDVZj0opNhiNZTO2f89xx0M-4X4MBekDzyLS9P_WufS4AeT1YW3cXWy9tXzkVyqXhpf4PeoutN98mseWH5m-wuMp1OEnqq4yJlEk6Z8BWz1T4m8t-Hz5kIclXitESBwXH4x9FMmMg--_t9HYYP4eBbygIGB2O9WxtEUU_vBe4iTNJDTCV3hPH_WMFs5P1Tc9vPNqANv11R8hyJrgFb9YtdKQJHKyomBGheaRp760zAbE6iyrNYRQagRMfcN8bF9w"
-    fina_script = request.body.decode('utf-8')
-    url = "https://api.d-id.com/talks"
+class GenerateVideoView(View):
+    @csrf_exempt
+    def post(self, request):
+        fina_script = request.body.decode('utf-8')
+        url = "https://api.d-id.com/talks"
 
-    payload = {
-        "script": {
-            "type": "text",
-            "subtitles": "false",
-            "provider": {
-                "type": "microsoft",
-                "voice_id": "en-US-JennyNeural"
+        payload = {
+            "script": {
+                "type": "text",
+                "subtitles": "false",
+                "provider": {
+                    "type": "microsoft",
+                    "voice_id": VOICE_ID
+                },
+                "ssml": "false",
+                "input": fina_script
             },
-            "ssml": "false",
-            "input": fina_script},
-        "config": {
-            "fluent": "false",
-            "pad_audio": "0.0"
-        },
-        "source_url": "https://create-images-results.d-id.com/api_docs/assets/noelle.jpeg"
-    }
-    headers = {
-        "accept": "application/json",
-        "content-type": "application/json",
-        "authorization": token
-    }
+            "config": {
+                "fluent": "false",
+                "pad_audio": "0.0"
+            },
+            "source_url": AVATAR_URL
+        }
 
-    response = requests.post(url, json=payload, headers=headers)
+        headers = {
+            "accept": "application/json",
+            "content-type": "application/json",
+            "authorization": "Basic " + D_ID_API_KEY
+        }
 
-    if response.status_code == 200:
-        # Return the response as JSON
-        return JsonResponse(response.json())
-    else:
-        # Return an error response
-        return JsonResponse({"error": "Video generation failed"}, status=500)
+        response = requests.post(url, json=payload, headers=headers)
+
+        if response.status_code == 200 or response.status_code == 201:
+            return JsonResponse(response.json())
+        else:
+            return JsonResponse({"error": "Video generation failed"}, status=500)
 
 
-@csrf_exempt  # Only for example, consider a more secure implementation
-def process_selected_news(request):
-    if request.method == "POST":
+class ViewVideoView(View):
+    @csrf_exempt
+    def get(self, request, video_id):
+        api_url = f"https://api.d-id.com/talks/{video_id}"
 
-        data = json.loads(request.body)
-        articles = []
-        video_script_len = f"Video Script (Around {len(data) * 20} Seconds)"
-        for item in data:
-            from newspaper import Article
-            article = Article(item['url'])
-            try:
-                article.download()
-                article.parse()
-                articles.append(generate_summary(article_text=article.text))
-            except:
+        headers = {
+            "accept": "application/json",
+            "authorization": "Basic " + D_ID_API_KEY,
+        }
+
+        response = requests.get(api_url, headers=headers)
+
+        if response.status_code == 200:
+            video_data = response.json()
+            return JsonResponse(video_data)
+        else:
+            return render(request, 'newsapp/error.html', {'message': 'Video not found'})
+
+
+class ProcessSelectedNewsView(View):
+    @csrf_exempt
+    def post(self, request):
+        if request.method == "POST":
+            data = json.loads(request.body)
+            articles = []
+            video_len = 1
+            for item in data:
+                article = Article(item['url'])
                 try:
-                    url = requests.head(item['url']).headers['location']
-                    article = Article(url)
                     article.download()
                     article.parse()
-                    articles.append(generate_summary(article_text=article.text))
+                    summary = item.get('title') + '\n' + generate_summary(article.text)
+                    video_len = video_len + len(data) * 20
+                    articles.append(summary)
                 except:
-                    articles.append("unable to scrap data for " + item['url'])
-        summary = "\n\n".join(articles)
-        return JsonResponse({"summary": summary, "video_script_len": video_script_len})
+                    try:
+                        # Second try to get article
+                        url = requests.head(item['url']).headers['location']
+                        article = Article(url)
+                        article.download()
+                        article.parse()
+                        summary = item.get('title') + '\n' + generate_summary(article.text)
+                        video_len = video_len + len(data) * 20
+                        articles.append(summary)
+                    except:
+                        articles.append("unable to scrape data for " + item['description'])
+
+            summary = "\n\n".join(articles)
+            video_script_len = f"Video Script (Around {video_len - 1} Seconds)"
+            return JsonResponse({"summary": summary, "video_script_len": video_script_len})

@@ -2,6 +2,7 @@
 {% load custom_filters %}
 {% load humanize %}
 
+
 {% block content %}
     <div class="container">
         <div class="row">
@@ -15,7 +16,7 @@
                 </div>
             </div>
         </div>
-        <div class="row">
+        <div class="row" style="    justify-content: space-around;">
             <div class="col-md-4 mb-3">
                 <div class="input-group">
                     <select class="form-control" id="country" placeholder="Select Country...">
@@ -30,14 +31,35 @@
                     </select>
                 </div>
             </div>
+
+
+        </div>
+        <div class="row" style="    justify-content: space-around;">
             <div class="col-md-4 mb-3">
-                <div class="input-group">
-                    <input type="text" class="form-control" id="period" placeholder="Period (e.g., 7d, 1m, 1y)...">
+                <div class="input-group date" data-provide="datepicker">
+                    <input type="text" class="form-control" id="startDate" placeholder="Start Date">
+                    <div class="input-group-addon">
+                        <span class="glyphicon glyphicon-th"></span>
+                    </div>
                 </div>
             </div>
-        </div>
 
-        <div class="row">
+            <div class="col-md-4 mb-3">
+                <div class="input-group date" data-provide="datepicker">
+                    <input type="text" class="form-control" id="endDate" placeholder="End Date">
+                    <div class="input-group-addon">
+                        <span class="glyphicon glyphicon-th"></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-12">
+                <p class="text-danger" id="dateRangeError"></p>
+            </div>
+
+        </div>
+        <div class="border-top my-3"></div>
+        <div class="row" style="   justify-content: space-around;">
             <div class="col">
                 <ul class="news-list" id="newsList">
                     <!-- Loading spinner -->
@@ -49,7 +71,7 @@
             </div>
         </div>
 
-        <div class="text-center mt-3">
+        <div class="text-center mt-3 row" style=" justify-content: space-around;">
             <button class="btn btn-primary" id="processButton">Process Selected</button>
         </div>
 
@@ -71,15 +93,31 @@
 
         <div id="videoScript"></div>
 
-        <div class="row">
+        <div class="row" style="    justify-content: space-around">
             <div class="text-center mt-3">
                 <button class="btn btn-primary" id="generateVideo">Generate Video</button>
             </div>
         </div>
 
-        <div id="videoContainer">
-            <!-- The video URL will be displayed here -->
-        </div>  
+        <div class="row" style="justify-content: space-around">
+            <div class="text-center mt-3">
+                <button class="btn btn-primary" id="getGeneratedVideo">Get Generated video</button>
+            </div>
+        </div>
+        {#        <p>Video ID: <label for="videoId"></label><input id="videoId" readonly></p>#}
+
+    </div>
+
+    <div class="container" id="VideoContainer">
+
+        <div class="row" style="    justify-content: space-around;">
+            <video id="videoPlayer" controls>
+                Your browser does not support the video tag.
+            </video>
+        </div>
+        <div class="row" style="    justify-content: space-around;">
+            <div id="videoDetails"></div>
+        </div>
     </div>
 
 

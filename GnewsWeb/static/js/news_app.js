@@ -112,6 +112,22 @@ const languages = {
     'Korean': 'ko'
 };
 
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            // Check if this cookie name matches the one for CSRF token
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
 
 function populateSelect(selectId, options) {
     const select = document.getElementById(selectId);
@@ -123,6 +139,8 @@ function populateSelect(selectId, options) {
         }
     }
 }
+
+var videoId = '';
 
 
 document.addEventListener("DOMContentLoaded", function () {
@@ -136,49 +154,122 @@ document.addEventListener("DOMContentLoaded", function () {
     const selectAllCheckbox = document.getElementById("selectAll");
     const processButton = document.getElementById("processButton");
     const generateVideo = document.getElementById("generateVideo");
+    const getGeneratedVideo = document.getElementById("getGeneratedVideo");
+    const videoContainer = document.getElementById("VideoContainer");
+    const videoPlayer = document.getElementById("videoPlayer");
+    const csrftoken = getCookie('csrftoken'); // Function to get the CSRF token from cookies
+
     loader.style.display = 'none';
+    getGeneratedVideo.style.display = 'none';
+    videoContainer.style.display = 'none';
     processButton.style.display = 'none'
 
-    var summary = ''
+    var summary = '';
 
-    generateVideo.addEventListener("click", function () {
-        // Your existing code for processing selected news...
+    function checkVideoStatus(videoId) {
 
-        // After processing selected news, assume you have the summary in a variable called `summary`.
-        // Now, you can send the summary to the Django view for video generation.
-
-        // Display the loader while generating the video
-        loader.style.display = "block";
-
-        // Make a POST request to the Django view
-        fetch("/generate_video/", {
-            method: "POST",
+        fetch("/view_video/" + videoId, {
+            method: "GET",
             headers: {
-                "Content-Type": "text/plain", // Set the content type to plain text
+                "Content-Type": "application/json",
             },
-            body: summary, // Send the summary as the request body
         })
             .then((response) => response.json())
-            .then((data) => {
-                // Handle the response from the server (e.g., display the video or processing status)
-                console.log("Video generation response:", data);
-
-                // Hide the loader after generating the video
-                loader.style.display = "none";
-                
-                // Assuming the video URL is available in the response, you can display it or handle it accordingly
-                if (data.video_url) {
-                    // Display the video or perform any required actions
-                    // You can use the data.video_url to embed or play the video
+            .then((videoData) => {
+                debugger
+                if (videoData.status === "done") {
+                    // Video processing is done, you can display the video or perform further actions
+                    displayVideo(videoData);
+                } else {
+                    // Video processing is not yet done, continue polling
+                    setTimeout(() => {
+                        checkVideoStatus(videoId);
+                    }, 5000); // Poll every 5 seconds (adjust as needed)
                 }
             })
             .catch((error) => {
-                console.error("Error generating video:", error);
+                console.error("Error checking video status:", error);
+            });
+    }
 
-                // Hide the loader in case of an error
+// Function to display the video when processing is complete
+    function displayVideo(videoData) {
+        // Display video details
+        loader.style.display = "none";
+        videoContainer.style.display = 'block'
+        document.getElementById('summaryContainer').style.display = 'none';
+        const videoDetails = document.getElementById("videoDetails");
+        videoDetails.innerHTML = `
+        <p>Video ID: ${videoData.id}</p>
+        <p>Duration: ${videoData.duration} seconds</p>
+    `;
+
+        // Check if videoData.result_url is defined before setting the download link
+        if (videoData.result_url) {
+            const downloadLink = document.createElement("a");
+            downloadLink.href = videoData.result_url;
+            downloadLink.textContent = "Download Video";
+            downloadLink.setAttribute("download", "video.mp4");
+            videoDetails.appendChild(downloadLink);
+        }
+
+        // Display the video player
+        const videoPlayer = document.getElementById("videoPlayer");
+        videoPlayer.style.display = "block";
+        videoPlayer.src = videoData.result_url;
+    }
+
+// Trigger video processing and status checking
+    getGeneratedVideo.addEventListener("click", function () {
+        loader.style.display = "block";
+        fetch("/view_video/" + videoId + "/", {
+            method: "GET",
+            headers: {
+                "Content-Type": "text/plain",
+            },
+        })
+            .then((response) => response.json())
+            .then((videoData) => {
+                getGeneratedVideo.style.display = "none";
+                // Start checking the video status
+                checkVideoStatus(videoId);
+            })
+            .catch((error) => {
+                console.error("Error getting video:", error);
                 loader.style.display = "none";
             });
     });
+
+    generateVideo.addEventListener("click", function () {
+        loader.style.display = "block";
+        fetch("/generate_video/", {
+            method: "POST",
+            headers: {
+                "X-CSRFToken": csrftoken,
+                "Content-Type": "text/plain",
+            },
+            body: document.getElementById('processedDataTextarea').value,
+        })
+            .then((response) => response.json())
+            .then((data) => {
+                debugger;
+                loader.style.display = "none";
+                const videoIdElement = document.getElementById("videoId");
+                if (videoIdElement) {
+                    videoIdElement.style.display = 'block'
+                    videoIdElement.textContent = data.id;
+                    
+                }
+                videoId = data.id;
+                getGeneratedVideo.style.display = 'block';
+                generateVideo.style.display = 'none';
+            })
+            .catch((error) => {
+                console.error("Error generating video:", error);
+                loader.style.display = "none";
+            });
+    });
+
 
     // Handle "Process" button click
     processButton.addEventListener("click", function () {
@@ -200,14 +291,13 @@ document.addEventListener("DOMContentLoaded", function () {
         fetch("/process_selected_news/", {
             method: "POST",
             headers: {
+                "X-CSRFToken": csrftoken,
                 "Content-Type": "application/json",
             },
             body: JSON.stringify(selectedNews),
         })
             .then((response) => response.text()) // Assuming the server returns a text response
             .then((data) => {
-                // Handle the response from the server (e.g., display a success message)
-                // Display the processed data in the textarea
                 newsList.style.display = 'none'
 
                 const textarea = document.getElementById("processedDataTextarea");
@@ -217,12 +307,15 @@ document.addEventListener("DOMContentLoaded", function () {
                 loader.style.display = "none";
                 processButton.style.display = 'none'
                 const jsonData = JSON.parse(data)
-                debugger;
                 const videoLen = document.getElementById("scriptLen");
                 videoLen.style.display = 'block'
                 videoLen.textContent = jsonData.video_script_len;
                 summary = jsonData.summary;
                 textarea.value = summary;
+                const videoIdElement = document.getElementById("videoId");
+                if (videoIdElement) {
+                    videoIdElement.style.display = '';
+                }
             })
             .catch((error) => {
                 console.error("Error processing news:", error);
@@ -236,21 +329,80 @@ document.addEventListener("DOMContentLoaded", function () {
     searchButton.addEventListener("click", function () {
         const keyword = searchInput.value;
         // const period = document.getElementById("period").value;
-        const period = 'B'
-        // const source = document.getElementById("source").value;
-        const source = 'A'
+        $(document).ready(function () {
+            // Initialize datepickers
+            $('#startDate').datepicker({
+                format: 'yyyy-mm-dd',
+                autoclose: true,
+                startView: 'months', // Show the months view when the date picker opens
+                minViewMode: 'months' // Only allow selection of months and years
+            });
+
+            $('#endDate').datepicker({
+                format: 'yyyy-mm-dd',
+                autoclose: true,
+                startView: 'months', // Show the months view when the date picker opens
+                minViewMode: 'months' // Only allow selection of months and years
+            });
+
+            // Calculate the default date range (previous week)
+            var today = new Date();
+            var lastWeek = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 7);
+
+            // Set default dates in datepickers
+            $('#startDate').datepicker('setDate', lastWeek);
+            $('#endDate').datepicker('setDate', today);
+
+            // Link the datepickers to create a date range
+            $('#startDate').on('changeDate', function (selected) {
+                var startDate = new Date(selected.date.valueOf());
+                $('#endDate').datepicker('setStartDate', startDate);
+            });
+
+            $('#endDate').on('changeDate', function (selected) {
+                var endDate = new Date(selected.date.valueOf());
+                $('#startDate').datepicker('setEndDate', endDate);
+            });
+
+            // Function to get selected start and end dates
+            function getSelectedDateRange() {
+                var startDate = $('#startDate').datepicker('getFormattedDate');
+                var endDate = $('#endDate').datepicker('getFormattedDate');
+                return {start: startDate, end: endDate};
+            }
+
+            // Validate the date range
+            $('#endDate').on('changeDate', function () {
+                var dateRange = getSelectedDateRange();
+                var startDate = new Date(dateRange.start);
+                var endDate = new Date(dateRange.end);
+                var today = new Date();
+
+                if (endDate < startDate) {
+                    $('#dateRangeError').text('End date cannot be before start date.');
+                    $('#endDate').datepicker('setDate', startDate);
+                } else if (endDate > today) {
+                    $('#dateRangeError').text('End date cannot be in the future.');
+                    $('#endDate').datepicker('setDate', today);
+                } else {
+                    $('#dateRangeError').text('');
+                }
+            });
+        });
+
 
         // Show the loader while fetching news
         loader.style.display = "block";
-
+        const startDate = document.getElementById("startDate").value; // Get the selected start date
+        const endDate = document.getElementById("endDate").value; 
         // Make an AJAX request to fetch news
-        fetch(`/fetch_news/?keyword=${keyword}&period=${period}&source=${source}`)
+        let period = '7d';
+        let source = '';
+        fetch(`/fetch_news/?keyword=${keyword}&period=${period}&source=${source}&start_date=${startDate}&end_date=${endDate}`)
             .then((response) => response.json())
             .then((data) => {
                 // Clear existing news items
                 newsList.innerHTML = "";
-
-                // Hide the loader after fetching news
                 loader.style.display = "none";
                 processButton.style.display = 'block'
                 // Display news items dynamically
@@ -276,4 +428,6 @@ document.addEventListener("DOMContentLoaded", function () {
                 console.error("Error fetching news:", error);
             });
     });
+
+
 });

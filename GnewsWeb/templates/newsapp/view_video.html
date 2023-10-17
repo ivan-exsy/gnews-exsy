@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+{% load custom_filters %}
+{% load humanize %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>View Video</title>
+</head>
+<body>
+    <h1>Video Details</h1>
+    
+    <!-- Display video details -->
+    <p>Video ID: {{ video_data.id }}</p>
+    <p>Duration: {{ video_data.duration }} seconds</p>
+    
+    <!-- Display the video player -->
+    <video controls>
+        <source src="{{ video_data.result_url }}" type="video/mp4">
+        Your browser does not support the video tag.
+    </video>
+    
+    <!-- Add a download button for the video -->
+    <a href="{{ video_data.result_url }}" download>Download Video</a>
+</body>
+</html>
